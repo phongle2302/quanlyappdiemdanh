@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'api.dart';
 import 'device_services.dart';
 import 'report_page.dart';
+import 'location_map_page.dart';
 import 'translation_page.dart';
 import 'ui.dart';
 
@@ -209,22 +210,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> editLesson(Json course, [Json? item]) async {
-    var latitude = item?['latitude']?.toString() ?? '',
-        longitude = item?['longitude']?.toString() ?? '';
+    GpsLocationResult? gps;
     if (item == null) {
-      try {
-        final pos = await DeviceServices.location();
-        latitude = pos.latitude.toString();
-        longitude = pos.longitude.toString();
-      } catch (_) {
-        if (mounted) {
-          showError(
-            context,
-            'Chưa lấy được GPS. Bạn có thể nhập tọa độ lớp thủ công.',
-          );
-        }
-      }
+      gps = await Navigator.push<GpsLocationResult>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LocationMapPage(
+            title: 'Xác định vị trí lớp học',
+            captureClassLocation: true,
+          ),
+        ),
+      );
+      if (gps == null || !mounted) return;
     }
+    final latitude =
+            gps?.position.latitude.toString() ??
+            item?['latitude']?.toString() ??
+            '',
+        longitude =
+            gps?.position.longitude.toString() ??
+            item?['longitude']?.toString() ??
+            '';
     if (!mounted) return;
     final start =
         item?['startsAt'] ??
@@ -255,17 +261,24 @@ class _HomePageState extends State<HomePage> {
           value: end,
           picker: () => pickDate(end),
         ),
-        FieldSpec('latitude', 'Vĩ độ lớp học', value: latitude, number: true),
+        FieldSpec(
+          'latitude',
+          'Vĩ độ GPS',
+          value: latitude,
+          number: true,
+          readOnly: true,
+        ),
         FieldSpec(
           'longitude',
-          'Kinh độ lớp học',
+          'Kinh độ GPS',
           value: longitude,
           number: true,
+          readOnly: true,
         ),
         FieldSpec(
           'radiusMeters',
           'Bán kính điểm danh (10–500 m)',
-          value: (item?['radiusMeters'] ?? 100).toString(),
+          value: (gps?.radiusMeters ?? item?['radiusMeters'] ?? 100).toString(),
           number: true,
         ),
         FieldSpec(
@@ -289,6 +302,10 @@ class _HomePageState extends State<HomePage> {
         data['startsAt'] = s.toUtc().toIso8601String();
         data['endsAt'] = e.toUtc().toIso8601String();
         data['courseId'] = course['id'];
+        if (gps != null) {
+          data['latitude'] = gps!.position.latitude;
+          data['longitude'] = gps!.position.longitude;
+        }
         data['closed'] = data['closed'] == 'true';
         await api.request(
           item == null ? 'POST' : 'PUT',
@@ -296,6 +313,40 @@ class _HomePageState extends State<HomePage> {
           data,
         );
       },
+      formFooter: (dialogContext, controllers) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: OutlinedButton.icon(
+          icon: const Icon(Icons.map_outlined),
+          label: const Text('Cập nhật vị trí GPS'),
+          onPressed: () async {
+            final selected = await Navigator.push<GpsLocationResult>(
+              dialogContext,
+              MaterialPageRoute(
+                builder: (_) => LocationMapPage(
+                  title: 'Xác định vị trí lớp học',
+                  captureClassLocation: true,
+                  target: mapPoint(
+                    controllers['latitude']!.text,
+                    controllers['longitude']!.text,
+                  ),
+                  radiusMeters:
+                      double.tryParse(controllers['radiusMeters']!.text) ?? 100,
+                ),
+              ),
+            );
+            if (selected != null && dialogContext.mounted) {
+              gps = selected;
+              controllers['latitude']!.text = selected.point.latitude
+                  .toStringAsFixed(6);
+              controllers['longitude']!.text = selected.point.longitude
+                  .toStringAsFixed(6);
+              controllers['radiusMeters']!.text = selected.radiusMeters
+                  .round()
+                  .toString();
+            }
+          },
+        ),
+      ),
     );
     if (changed == true) await reload();
   }
@@ -337,6 +388,8 @@ class _HomePageState extends State<HomePage> {
         if (!await DeviceServices.biometric()) return;
       }
       final pos = await DeviceServices.location();
+      final problem = DeviceServices.locationProblem(pos);
+      if (problem != null) throw ApiException(problem);
       final result = await api.request('POST', '/attendance/check-in', {
         'lessonId': lesson['id'],
         'method': method,
@@ -480,6 +533,20 @@ class _HomePageState extends State<HomePage> {
             Text(
               'Phòng ${c?['room'] ?? '—'} · Bán kính ${l['radiusMeters']} m',
               style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            TextButton.icon(
+              onPressed: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LocationMapPage(
+                    title: 'Vị trí · ${l['title']}',
+                    target: mapPoint(l['latitude'], l['longitude']),
+                    radiusMeters: (l['radiusMeters'] as num).toDouble(),
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.map_outlined),
+              label: const Text('Xem vị trí trên bản đồ'),
             ),
             const SizedBox(height: 16),
             if (student && r == null)
@@ -981,6 +1048,14 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -.5),
         ),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.push<void>(
+              context,
+              MaterialPageRoute(builder: (_) => const LocationMapPage()),
+            ),
+            icon: const Icon(Icons.map_outlined),
+            tooltip: 'Bản đồ vị trí',
+          ),
           IconButton(
             onPressed: loading ? null : reload,
             icon: const Icon(Icons.sync_rounded),

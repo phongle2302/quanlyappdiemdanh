@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -27,12 +28,40 @@ class DeviceServices {
     if (permission == LocationPermission.denied) {
       throw ApiException('Cần quyền vị trí để xác nhận bạn đang ở lớp.');
     }
-    return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 20),
-      ),
-    );
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        ),
+      );
+    } on TimeoutException {
+      throw ApiException(
+        'Chưa lấy được GPS sau 20 giây. Hãy bật vị trí chính xác, ra nơi thoáng và thử lại.',
+      );
+    }
+  }
+
+  static String? locationProblem(Position position, {DateTime? now}) {
+    if (!position.latitude.isFinite ||
+        !position.longitude.isFinite ||
+        position.latitude < -90 ||
+        position.latitude > 90 ||
+        position.longitude < -180 ||
+        position.longitude > 180 ||
+        !position.accuracy.isFinite ||
+        position.accuracy <= 0) {
+      return 'GPS chưa trả về tọa độ và độ chính xác hợp lệ. Hãy thử lại.';
+    }
+    final age = (now ?? DateTime.now()).difference(position.timestamp);
+    if (age > const Duration(seconds: 60) ||
+        age < const Duration(seconds: -10)) {
+      return 'Kết quả GPS đã cũ hoặc thời gian không hợp lệ. Hãy cập nhật GPS.';
+    }
+    if (position.accuracy > 50) {
+      return 'GPS đang sai số ±${position.accuracy.toStringAsFixed(0)} m; cần tối đa 50 m. Hãy bật vị trí chính xác và thử lại.';
+    }
+    return null;
   }
 
   static Future<bool> biometric() async {

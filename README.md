@@ -89,6 +89,17 @@ flutter build apk --debug --dart-define=API_URL=http://10.0.2.2:5099
 
 APK: `mobile/build/app/outputs/flutter-apk/app-debug.apk`. Đây là bản debug cho emulator; muốn cài trên điện thoại thật, build lại với IP LAN của máy chủ. Bản phát hành cần cấu hình signing riêng trong `mobile/android/app/build.gradle.kts`.
 
+## Bản đồ và định vị GPS
+
+- Chạm biểu tượng bản đồ để app tự xác định vị trí điện thoại. Lần đầu cần cấp quyền vị trí chính xác và bật dịch vụ GPS. Bản đồ chỉ để xem, kéo/thu phóng không thay đổi tọa độ.
+- Giáo viên vào **Lớp học → Mở buổi học**. App mở màn hình xác định GPS, hiển thị tọa độ và độ chính xác. Chờ GPS hợp lệ, chỉnh bán kính 10–500 m nếu cần, nhấn **Xác nhận vị trí GPS**, rồi điền/lưu thông tin buổi học. Không thể chọn điểm bằng cách chạm bản đồ hoặc gõ tọa độ.
+- Khi sửa buổi học, tọa độ đang lưu chỉ đọc. Dùng **Cập nhật vị trí GPS** để thay tâm lớp bằng vị trí điện thoại. Hủy màn hình GPS giữ nguyên vị trí cũ.
+- Ở thẻ buổi học, chọn **Xem vị trí trên bản đồ**: app tự lấy GPS, hiển thị vị trí của bạn, tâm lớp, vòng bán kính, độ chính xác và khoảng cách. Có thể nhấn **Cập nhật GPS** để lấy lại.
+- Nếu thiếu quyền/tắt GPS, có nút **Quyền ứng dụng**, **Cài đặt vị trí** và **Thử lại GPS**. App lấy lại vị trí khi quay về từ cài đặt. Kết quả quá 60 giây, có thời gian tương lai quá 10 giây, tọa độ/độ chính xác không hợp lệ hoặc sai số trên 50 m không được xác nhận làm vị trí lớp. Khi lấy GPS mới thất bại, kết quả cũ không được dùng để xác nhận thay thế.
+- Trong báo cáo điểm danh, menu **Xem vị trí đã chia sẻ** hiển thị vị trí đã ghi nhận của sinh viên, không tự thay bằng GPS hiện tại. Bản ghi thủ công không có GPS.
+- Bản đồ cần Internet để tải nền; lỗi tải nền có nút thử lại. Vị trí được lấy khi mở màn hình, quay lại ứng dụng hoặc bấm cập nhật, không theo dõi GPS nền. Xem bản đồ không gửi tọa độ GPS tới API điểm danh. Khi điểm danh, app vẫn lấy GPS mới, xin đồng ý chia sẻ vị trí và máy chủ kiểm tra điều kiện.
+- Dùng `flutter_map` 8.3.2 và nền OpenStreetMap, không cần API key. Có bộ nhớ đệm mặc định, định danh ứng dụng và liên kết bản quyền trên bản đồ. Xem [tài liệu flutter_map](https://docs.fleaflet.dev/) và [chính sách OpenStreetMap](https://operations.osmfoundation.org/policies/tiles/).
+
 ## Kịch bản sử dụng
 
 Giáo viên đã xác thực email đăng nhập bằng mật khẩu và được đưa thẳng tới dashboard, không cần OTP mỗi lần đăng nhập. Sinh viên và quản trị viên vẫn xác thực OTP. Đăng ký mới vẫn cần xác thực email và không được tự chọn quyền giáo viên.

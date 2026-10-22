@@ -44,3 +44,32 @@ Các bước thử trên thiết bị: xem [README](../README.md), phần “K�
 - Flutter: **8 kiểm thử đạt**, gồm đăng nhập thẳng vào dashboard giáo viên và lưu phiên. `flutter analyze --no-pub`: không có vấn đề.
 - APK debug build thành công, địa chỉ API `http://127.0.0.1:5099` qua USB. API đã khởi động lại và `/health` trả trạng thái `ok`.
 - Đã cài APK mới lên NX669J (`adb install -r`: `Success`), mở app và khôi phục đường USB. Kiểm tra `/health` trực tiếp trên điện thoại: **HTTP 200**. Chưa thao tác đăng nhập bằng mật khẩu thật của người dùng.
+
+## Bổ sung bản đồ vị trí
+
+- Mã nguồn được cập nhật tại `/Users/lutuanhuy/Desktop/luvinhphong2302` sau khi thư mục dự án được chuyển tên.
+- Thêm màn hình OpenStreetMap: chọn tâm lớp và bán kính, định vị GPS theo yêu cầu, xem khoảng cách/vùng điểm danh và vị trí đã ghi nhận trong báo cáo.
+- Không tự xin GPS khi mở biểu mẫu tạo buổi; người dùng bấm nút định vị hoặc chọn điểm trên bản đồ. Hủy chọn giữ giá trị biểu mẫu; quyền gửi GPS khi điểm danh giữ luồng đồng ý hiện có.
+- Kiểm thử: **15 kiểm thử Flutter đạt** (8 hồi quy và 7 cho bản đồ), gồm lưu tọa độ GPS/bán kính, chọn điểm rồi hủy, lỗi GPS và thử lại, GPS không chính xác, vị trí báo cáo chỉ đọc, lỗi tải nền và thử lại, tọa độ không hợp lệ. Kiểm thử bản đồ dùng ảnh nền trong bộ nhớ và GPS giả lập, không gọi máy chủ bản đồ công cộng.
+- Người dùng chọn tự cài APK sau; chưa kiểm thử GPS thật và tải nền bản đồ trên điện thoại cho bản này.
+- `flutter analyze --no-pub`: **không có vấn đề**. APK debug build thành công, lưu tại `mobile/build/app/outputs/flutter-apk/app-debug.apk`; mã nguồn và APK đã đối chiếu với bản dùng để kiểm thử. API trong APK là `http://127.0.0.1:5099`, cần máy chủ đang chạy và `adb reverse tcp:5099 tcp:5099` khi dùng qua USB.
+
+## Chỉnh giao diện đăng nhập và đăng ký
+
+- Thiết kế lại hai biểu mẫu với nền xanh đậm, thẻ trắng, tab chuyển chế độ, biểu tượng trường nhập và nút hiện/ẩn mật khẩu. Hỗ trợ gợi ý điền tài khoản, phím chuyển trường và cuộn khi mở bàn phím.
+- Đăng ký có xác nhận mật khẩu, kiểm tra email/tên đăng nhập và thông báo lỗi ngay tại trường. Đăng nhập giữ kiểm tra mật khẩu hiện có; giáo viên vào dashboard trực tiếp, sinh viên/admin tiếp tục dùng OTP.
+- Làm lại màn hình OTP và thông báo lỗi; tiếp tục phân biệt email SMTP và email thử nghiệm cục bộ. Quay lại hoặc chuyển chế độ đặt lại thông báo lỗi, che mật khẩu và đưa biểu mẫu về đầu trang.
+- `flutter analyze --no-pub`: **không có vấn đề**. **19 kiểm thử đạt** gồm hồi quy đăng nhập, bản đồ, đăng ký, xác nhận mật khẩu, bàn phím màn hình 360×740, đổi chế độ và dựng ảnh ba màn hình ở 430×932.
+- Đã mở và xem ảnh `docs/previews/auth-login.png`, `auth-register.png`, `auth-otp.png` với dữ liệu giả lập. Không dùng mật khẩu thật để kiểm thử.
+- APK debug build thành công, địa chỉ API qua USB `http://127.0.0.1:5099`; lưu tại `mobile/build/app/outputs/flutter-apk/app-debug.apk`. API khởi động từ thư mục dự án hiện tại để dùng dữ liệu và cấu hình Gmail hiện có.
+- Đã cài bản mới lên NX669J (`adb install -r`: `Success`), mở `vn.edu.attendly.attendly/.MainActivity` và xác nhận tiến trình đang chạy. Kiểm tra `/health` trực tiếp từ điện thoại: **HTTP 200**. Chưa đăng nhập bằng thông tin thật hoặc gửi OTP thật trong lần kiểm tra giao diện này.
+
+## Đổi định vị sang GPS tự động
+
+- Bản đồ tự lấy vị trí khi mở hoặc khi ứng dụng được tiếp tục sau khi vào cài đặt. Đã bỏ thao tác chọn tọa độ bằng cách chạm bản đồ.
+- Khi mở buổi học mới, giáo viên xác định/xác nhận GPS trước khi nhập thông tin buổi học. Tọa độ trong biểu mẫu chỉ đọc; cập nhật bằng kết quả GPS từ điện thoại, không gõ tay. Chỉnh thông tin buổi học cũ vẫn giữ tâm lớp đã lưu nếu không cập nhật GPS.
+- Xác nhận vị trí lớp cần GPS có tọa độ hữu hạn/hợp lệ, sai số >0 và ≤50 m, thời gian trong khoảng từ 60 giây trước đến 10 giây sau thời điểm hiện tại. Kiểm tra lại khi bấm xác nhận. Lấy lại GPS thất bại không cho dùng kết quả cũ để xác nhận. Khi bấm điểm danh cũng kiểm tra kết quả GPS trước khi gửi API.
+- Có trạng thái đang định vị, thông báo thiếu quyền/tắt GPS/hết thời gian, nút mở cài đặt vị trí/quyền và thử lại. Báo cáo tiếp tục hiển thị vị trí lịch sử, không yêu cầu GPS mới.
+- Kiểm thử: **21 kiểm thử đạt** tổng cộng gồm 10 kiểm thử GPS/bản đồ, 8 hồi quy app và 3 biểu mẫu đăng nhập/đăng ký; bài dựng ảnh tùy chọn được bỏ qua. Bộ GPS gồm tự lấy vị trí, không đổi tâm khi chạm, hủy xác nhận, thiếu quyền rồi thử lại, từ chối GPS cũ/sai số lớn, lỗi làm mới, tự lấy lại sau khi quay về từ cài đặt, báo cáo lịch sử và thử tải lại nền.
+- Người dùng chọn cài APK sau; chưa kiểm thử cảm biến GPS thật hoặc cấp quyền vị trí trên điện thoại cho thay đổi này.
+- `flutter analyze --no-pub`: **không có vấn đề**. APK debug build thành công, đã lưu và đối chiếu mã băm tại `mobile/build/app/outputs/flutter-apk/app-debug.apk`. 5 tệp Flutter được đối chiếu đúng bản đã build/kiểm thử. API trong APK: `http://127.0.0.1:5099`, dùng máy chủ cục bộ qua USB và `adb reverse tcp:5099 tcp:5099`.

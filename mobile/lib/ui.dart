@@ -93,7 +93,7 @@ class SectionTitle extends StatelessWidget {
 
 class FieldSpec {
   final String keyName, label, value;
-  final bool required, password, number;
+  final bool required, password, number, readOnly;
   final Map<String, String>? options;
   final Future<String?> Function()? picker;
   const FieldSpec(
@@ -103,6 +103,7 @@ class FieldSpec {
     this.required = true,
     this.password = false,
     this.number = false,
+    this.readOnly = false,
     this.options,
     this.picker,
   });
@@ -112,21 +113,30 @@ Future<bool?> editDialog(
   BuildContext context,
   String title,
   List<FieldSpec> fields,
-  Future<void> Function(Json) save,
-) => showDialog<bool>(
+  Future<void> Function(Json) save, {
+  Widget Function(BuildContext, Map<String, TextEditingController>)? formFooter,
+}) => showDialog<bool>(
   context: context,
   barrierDismissible: false,
-  builder: (_) => _EditDialog(title: title, fields: fields, save: save),
+  builder: (_) => _EditDialog(
+    title: title,
+    fields: fields,
+    save: save,
+    formFooter: formFooter,
+  ),
 );
 
 class _EditDialog extends StatefulWidget {
   final String title;
   final List<FieldSpec> fields;
   final Future<void> Function(Json) save;
+  final Widget Function(BuildContext, Map<String, TextEditingController>)?
+  formFooter;
   const _EditDialog({
     required this.title,
     required this.fields,
     required this.save,
+    this.formFooter,
   });
   @override
   State<_EditDialog> createState() => _EditDialogState();
@@ -220,6 +230,7 @@ class _EditDialogState extends State<_EditDialog> {
                         : TextFormField(
                             controller: controllers[f.keyName],
                             obscureText: f.password,
+                            readOnly: f.readOnly,
                             enabled: !busy,
                             keyboardType: f.number
                                 ? const TextInputType.numberWithOptions(
@@ -255,7 +266,9 @@ class _EditDialogState extends State<_EditDialog> {
                             validator: (v) {
                               if (f.required &&
                                   (v == null || v.trim().isEmpty)) {
-                                return 'Vui lòng nhập ${f.label.toLowerCase()}';
+                                return f.readOnly
+                                    ? 'Chưa có vị trí GPS. Hãy xác định vị trí.'
+                                    : 'Vui lòng nhập ${f.label.toLowerCase()}';
                               }
                               if (f.number && num.tryParse(v ?? '') == null) {
                                 return 'Vui lòng nhập số';
@@ -263,6 +276,11 @@ class _EditDialogState extends State<_EditDialog> {
                               return null;
                             },
                           ),
+                  ),
+                if (widget.formFooter != null)
+                  IgnorePointer(
+                    ignoring: busy,
+                    child: widget.formFooter!(context, controllers),
                   ),
                 if (error != null)
                   Text(error!, style: const TextStyle(color: Colors.red)),

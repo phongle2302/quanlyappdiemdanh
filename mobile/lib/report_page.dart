@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'api.dart';
 import 'ui.dart';
+import 'location_map_page.dart';
 
 class MembersPage extends StatefulWidget {
   final Api api;
@@ -262,19 +263,29 @@ class _ReportPageState extends State<ReportPage> {
             if (v == 'edit') edit(s, r);
             if (v == 'delete' && r != null) remove(r);
             if (v == 'location' && r != null) {
-              showDialog<void>(
-                context: context,
-                builder: (c) => AlertDialog(
-                  title: const Text('Vị trí lúc điểm danh'),
-                  content: SelectableText(
-                    'Vĩ độ: ${r['latitude']}\nKinh độ: ${r['longitude']}\nĐộ chính xác: ${r['accuracyMeters']} m\nCách lớp: ${(r['distanceMeters'] as num).toStringAsFixed(1)} m\nThời gian: ${dateText(r['checkedAt'])}',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(c),
-                      child: const Text('Đóng'),
+              final point = mapPoint(r['latitude'], r['longitude']);
+              if (point == null) {
+                showError(context, 'Bản ghi chưa có tọa độ hợp lệ.');
+                return;
+              }
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LocationMapPage(
+                    title: 'Vị trí · ${s['name']}',
+                    target: mapPoint(
+                      widget.lesson['latitude'],
+                      widget.lesson['longitude'],
                     ),
-                  ],
+                    radiusMeters: (widget.lesson['radiusMeters'] as num)
+                        .toDouble(),
+                    allowDeviceLocation: false,
+                    recordedLocation: MapLocation(
+                      point,
+                      (r['accuracyMeters'] as num).toDouble(),
+                      'Điểm danh ${dateText(r['checkedAt'])}',
+                    ),
+                  ),
                 ),
               );
             }
